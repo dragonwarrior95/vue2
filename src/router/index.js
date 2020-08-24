@@ -35,12 +35,6 @@ export const constantRoutes = [
   },
 
   {
-    path: '/hello',
-    component: () => import('@/components/HelloWorld.vue'),
-    // hidden: true
-  },
-
-  {
     path: '/404',
     component: () => import('@/views/404'),
     // hidden: true
@@ -49,14 +43,17 @@ export const constantRoutes = [
   {
     path: '/',
     component: () => import('@/views/home/index'),
-    // component: Layout,
-    // redirect: '/home',
-    // children: [{
-    //   path: 'home',
-    //   name: 'Home',
-    //   component: () => import('@/views/home/index'),
-    //   meta: { title: 'Home', icon: 'user' }
-    // }]
+  },
+
+  {
+    path: '/home',
+    component: () => import('@/views/home/index'),
+  },
+
+  {
+    path: '/hello',
+    component: () => import('@/components/HelloWorld.vue'),
+    // hidden: true
   },
 
   {
@@ -76,7 +73,7 @@ export const constantRoutes = [
 ]
 
 const createRouter = () => new Router({
-  // mode: 'history', // require service support
+  mode: 'history', // require service support--url去掉#/号模式,服务端添加try_files $uri $uri/ /index.html;
   scrollBehavior: () => ({ y: 0 }),
   routes: constantRoutes
 })

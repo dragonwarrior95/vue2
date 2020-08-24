@@ -22,3 +22,9 @@ npm run lint
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+### URL美化
+```
+vue-router 设置 mode: 'history',
+nginx设置：try_files $uri $uri/ /index.html;
+```
