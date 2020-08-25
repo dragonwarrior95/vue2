@@ -51,6 +51,11 @@ export const constantRoutes = [
   },
 
   {
+    path: '/scene',
+    component: () => import('@/views/scene/index'),
+  },
+
+  {
     path: '/hello',
     component: () => import('@/components/HelloWorld.vue'),
     // hidden: true
