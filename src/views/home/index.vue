@@ -46,9 +46,14 @@
     <el-container :style="{height: height}">
       <el-aside >
         <el-radio-group v-model="isCollapse">
-          <el-radio-button :label="isCollapse" @click={isCollapse}>收起:展开</el-radio-button>
-<!--                            <el-radio-button :label="true">收起</el-radio-button>-->
+          <el-radio-button :label="false">展开</el-radio-button>
+          <el-radio-button :label="true">收起</el-radio-button>
         </el-radio-group>
+        <div>
+          <input type="file" id="browsefile" hidden @change="onEditChange()">
+          <el-button type="primary" @click="onOpen" plain>打开图片</el-button>
+          <el-button type="success" @click="saveImage" plain>保存图片</el-button>
+        </div>
 
         <el-menu default-active="1-4-1" class="el-menu-vertical-demo" @open="handleOpen" @close="handleClose" :collapse="isCollapse">
           <el-submenu index="1">
@@ -84,7 +89,9 @@
         </el-menu>
       </el-aside>
       <el-main>
-          <el-row style="background-color: #42b983"><div id="scene" style="width: 100%; height: 100%;" v-loading="loading" @wheel="onMouseWheel" /></el-row>
+          <el-row style="background-color: #42b983">
+            <div id="scene" :style="{height: height}" v-loading="loading" @wheel="onMouseWheel" />
+          </el-row>
       </el-main>
     </el-container>
     <el-footer>
@@ -106,8 +113,9 @@
 
 <script>
 
-import PIXI from "pixi.js";
-import filters from "pixi-filters";
+import * as PIXI from "pixi.js";
+import * as filters from "pixi-filters";
+import $ from "jquery";
 function Loge() {
   const type = arguments[0]
   switch (type) {
@@ -173,13 +181,36 @@ export default {
   watch: {
   },
   mounted() {
+    this.windowWidth = $('#scene').width()
+    this.windowHeight = $('#scene').height()
+    // this.windowWidth = document.getElementById('scene').clientWidth
+    // this.windowHeight = document.getElementById('scene').clientHeight
+    Loge(this.windowWidth)
+    Loge(this.windowHeight)
+    const ctrlKey = this.keyboard()
+    ctrlKey.press = (event) => {
+      if (event.code === 'ControlLeft' || event.code === 'ControlRight') {
+        this.ctrlDown = true
+      } else if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
+        this.shiftDown = true
+      }
+      Loge('ctrlKey.press======\r\n')
+    }
+    ctrlKey.release = (event) => {
+      if (event.code === 'ControlLeft' || event.code === 'ControlRight') {
+        // eslint-disable-next-line no-empty
+      } else if (event.code === 'ShiftLeft' || event.code === 'ShiftRight') {
+      }
+      Loge('ctrlKey.release======\r\n')
+    }
     window.onresize = () => {
       return (() => {
-        // this.app.renderer.resize($('#app').width(), $('#app').height() - 120)
-        // this.myCanvas.x = this.app.screen.width / 2
-        // this.myCanvas.y = this.app.screen.height / 2
+        this.app.renderer.resize($('#app').width(), $('#app').height())
+        this.myCanvas.x = this.app.screen.width / 2
+        this.myCanvas.y = this.app.screen.height / 2
       })()
     }
+    this.loadImage('/1.jpg')
   },
   created() {
     this.getHeight()
@@ -249,6 +280,43 @@ export default {
         this.init()
         this.loading = false
       })
+    },
+    // 初始化时调的方法
+    init() {
+      Loge('')
+    },
+    onOpen() {
+      $('#browsefile').click()
+    },
+    onEditChange() {
+      const input = $('#browsefile')[0]
+      let imgURL = ''
+      try {
+        let file = null
+        if (input.files && input.files[0]) {
+          file = input.files[0]
+        } else if (input.files && input.files.item(0)) {
+          file = input.files.item(0)
+        }
+        // Firefox 因安全性问题已无法直接通过input[file].value 获取完整的文件路径
+        try {
+          imgURL = file.getAsDataURL()
+        } catch (e) {
+          imgURL = window.URL.createObjectURL(file)
+        }
+      } catch (e) {
+        if (input.files && input.files[0]) {
+          const reader = new FileReader()
+          reader.onload = function(e) {
+            imgURL = e.target.result
+          }
+          reader.readAsDataURL(input.files[0])
+        }
+      }
+
+      if (imgURL !== '') {
+        this.loadImage(imgURL)
+      }
     },
     saveImage() {
       if (this.myCanvas) {
