@@ -89,10 +89,10 @@
         </el-menu>
       </el-aside>
       <el-main>
-        <div style="position: relative" class="margin">
-          <img id="myImg" src="@/assets/img/1.jpg" style="max-width: 800px;" />
-          <canvas id="myCanvas" />
-        </div>
+<!--        <div style="position: relative" class="margin">-->
+<!--          <img id="myImg" src="@/assets/img/1.jpg" style="max-width: 800px;" />-->
+<!--          <canvas id="myCanvas" />-->
+<!--        </div>-->
           <el-row style="background-color: #42b983">
             <div id="scene" :style="{height: height}" v-loading="loading" @wheel="onMouseWheel" />
           </el-row>
@@ -120,6 +120,8 @@
 import * as PIXI from "pixi.js";
 import * as filters from "pixi-filters";
 import $ from "jquery";
+import { dataURLtoBlob } from "@/utils/ImageUtil";
+
 // import nodejs bindings to native tensorflow,
 // not required, but will speed up things drastically (python required)
 // import '@tensorflow/tfjs-node';
@@ -258,12 +260,23 @@ export default {
           break
       }
     },
-    async faceDetect() {
-      // 节点属性化
-      const imgEl = document.getElementById("myImg")
-      const canvasEl = document.getElementById("myCanvas")
-      const results = await faceapi.detectAllFaces(imgEl, this.options).withFaceLandmarks()
+    async load(imgUrl) {
+      Loge('load: ' + imgUrl)
+      // fetch images from url as blobs
+      // const blob = dataURLtoBlob(imgUrl)
+      const blobs = await Promise.all(imgUrl => (fetch(imgUrl)).blob()
+      )
 
+      // convert blobs (buffers) to HTMLImage elements
+      const image = await faceapi.bufferToImage(imgUrl)
+      Loge('image: ' + image)
+      return  image
+    },
+    async faceDetect(image) {
+      Loge(image)
+      // 节点属性化
+      const results = await faceapi.detectAllFaces(image, this.options).withFaceLandmarks()
+      Loge(results)
       if (this.graphics === null) {
         this.graphics = new PIXI.Graphics()
         this.graphics.lineStyle(4, 0xff0000, 1)
@@ -277,11 +290,6 @@ export default {
         }
         this.graphics.endFill()
       }
-
-      Loge(results)
-      faceapi.matchDimensions(canvasEl, imgEl)
-      const resizedResults = faceapi.resizeResults(results, imgEl)
-      this.withBoxes ? faceapi.draw.drawDetections(canvasEl, resizedResults) : faceapi.draw.drawFaceLandmarks(canvasEl, resizedResults)
     },
     getHeight(){
       this.height = window.innerHeight - 120 + 'px'
@@ -344,11 +352,9 @@ export default {
       this.$nextTick(() => {
         this.init()
         this.loading = false
-
         // this.initFaceDetect().then(() => this.faceDetect())
       })
-
-      this.initFaceDetect().then(() => this.faceDetect())
+      this.initFaceDetect().then(() => this.faceDetect(this.load(this.imageName)))
     },
     // 初始化时调的方法
     init() {
