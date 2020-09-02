@@ -89,6 +89,10 @@
         </el-menu>
       </el-aside>
       <el-main>
+        <div style="position: relative" class="margin">
+          <img id="myImg" src="@/assets/img/1.jpg" style="max-width: 800px;" />
+          <canvas id="myCanvas" />
+        </div>
           <el-row style="background-color: #42b983">
             <div id="scene" :style="{height: height}" v-loading="loading" @wheel="onMouseWheel" />
           </el-row>
@@ -116,6 +120,11 @@
 import * as PIXI from "pixi.js";
 import * as filters from "pixi-filters";
 import $ from "jquery";
+// import nodejs bindings to native tensorflow,
+// not required, but will speed up things drastically (python required)
+// import '@tensorflow/tfjs-node';
+import * as faceapi from 'face-api.js';
+
 function Loge() {
   const type = arguments[0]
   switch (type) {
@@ -143,6 +152,13 @@ export default {
   name: 'Home',
   data: function() {
     return {
+      nets: "ssdMobilenetv1", // 模型
+      options: null, // 模型参数
+      withBoxes: true, // 边框or轮廓
+      imgEl: null,
+      canvasEl: null,
+
+
       height: 400,
       visible: false,
       isCollapse: true,
@@ -210,7 +226,7 @@ export default {
         this.myCanvas.y = this.app.screen.height / 2
       })()
     }
-    this.loadImage('/1.jpg')
+    this.loadImage('@assets/img/1.jpg')
   },
   created() {
     this.getHeight()
@@ -218,6 +234,55 @@ export default {
     this.date = new Date().getFullYear()
   },
   methods: {
+    async initFaceDetect() {
+      await faceapi.nets[this.nets].loadFromUri("/models");
+      await faceapi.loadFaceLandmarkModel("/models");
+      // 根据模型参数识别调整结果
+      switch (this.nets) {
+        case "ssdMobilenetv1":
+          this.options = new faceapi.SsdMobilenetv1Options({
+            minConfidence: 0.5, // 0.1 ~ 0.9
+          })
+          break
+        case "tinyFaceDetector":
+          this.options = new faceapi.TinyFaceDetectorOptions({
+            inputSize: 512, // 160 224 320 416 512 608
+            scoreThreshold: 0.5, // 0.1 ~ 0.9
+          })
+          break
+        case "mtcnn":
+          this.options = new faceapi.MtcnnOptions({
+            minFaceSize: 20, // 1 - 50
+            scaleFactor: 0.709, // 0.1 ~ 0.9
+          })
+          break
+      }
+    },
+    async faceDetect() {
+      // 节点属性化
+      const imgEl = document.getElementById("myImg")
+      const canvasEl = document.getElementById("myCanvas")
+      const results = await faceapi.detectAllFaces(imgEl, this.options).withFaceLandmarks()
+
+      if (this.graphics === null) {
+        this.graphics = new PIXI.Graphics()
+        this.graphics.lineStyle(4, 0xff0000, 1)
+        this.sprite.addChild(this.graphics)
+      }
+      if (this.graphics) {
+        // this.graphics.beginFill(0xFFFF00, 1)
+        for(const i in results){
+          const box = results[i].detection.box
+          this.graphics.drawRect(box.x, box.y, box.width, box.height)
+        }
+        this.graphics.endFill()
+      }
+
+      Loge(results)
+      faceapi.matchDimensions(canvasEl, imgEl)
+      const resizedResults = faceapi.resizeResults(results, imgEl)
+      this.withBoxes ? faceapi.draw.drawDetections(canvasEl, resizedResults) : faceapi.draw.drawFaceLandmarks(canvasEl, resizedResults)
+    },
     getHeight(){
       this.height = window.innerHeight - 120 + 'px'
     },
@@ -279,7 +344,11 @@ export default {
       this.$nextTick(() => {
         this.init()
         this.loading = false
+
+        // this.initFaceDetect().then(() => this.faceDetect())
       })
+
+      this.initFaceDetect().then(() => this.faceDetect())
     },
     // 初始化时调的方法
     init() {
