@@ -126,6 +126,7 @@ import { dataURLtoBlob } from "@/utils/ImageUtil";
 // not required, but will speed up things drastically (python required)
 // import '@tensorflow/tfjs-node';
 import * as faceapi from 'face-api.js';
+import {base64ToBlob} from "../../utils/ImageUtil";
 
 function Loge() {
   const type = arguments[0]
@@ -228,7 +229,19 @@ export default {
         this.myCanvas.y = this.app.screen.height / 2
       })()
     }
-    this.loadImage('@assets/img/1.jpg')
+
+
+
+    fetch('1.jpg')
+            .then(res => res.blob())
+            .then(data => {
+              let blob = new File([data], 'tmp')
+              faceapi.bufferToImage(blob).then((img) => {
+                this.initFaceDetect().then(() => this.faceDetect(img))
+              })
+              blob = null
+            })
+    this.loadImage('1.jpg')
   },
   created() {
     this.getHeight()
@@ -261,16 +274,13 @@ export default {
       }
     },
     async load(imgUrl) {
-      Loge('load: ' + imgUrl)
-      // fetch images from url as blobs
-      // const blob = dataURLtoBlob(imgUrl)
-      const blobs = await Promise.all(imgUrl => (fetch(imgUrl)).blob()
-      )
-
-      // convert blobs (buffers) to HTMLImage elements
-      const image = await faceapi.bufferToImage(imgUrl)
-      Loge('image: ' + image)
-      return  image
+      fetch(imgUrl).then(function(response) {
+        return response.blob()
+      }).then(function(blob) {
+        const image = faceapi.bufferToImage(blob)
+        Loge('image: ' + image)
+        this.faceDetect(image)
+      })
     },
     async faceDetect(image) {
       Loge(image)
@@ -354,7 +364,6 @@ export default {
         this.loading = false
         // this.initFaceDetect().then(() => this.faceDetect())
       })
-      this.initFaceDetect().then(() => this.faceDetect(this.load(this.imageName)))
     },
     // 初始化时调的方法
     init() {
@@ -365,6 +374,10 @@ export default {
     },
     onEditChange() {
       const input = $('#browsefile')[0]
+      const blob = input.files[0]
+      faceapi.bufferToImage(blob).then((img) => {
+        this.initFaceDetect().then(() => this.faceDetect(img))
+      })
       let imgURL = ''
       try {
         let file = null
